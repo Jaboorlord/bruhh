@@ -10,18 +10,13 @@ local Title = Instance.new("TextLabel")
 local smoothText = Instance.new("TextBox")
 local aimbotT = Instance.new("TextButton")
 local smooth = Instance.new("TextLabel")
+local premiumLabel = Instance.new("TextLabel") -- Label for Premium Features
 
 -- Settings
 local aimbotEnabled = false  -- Initially disabled, toggled by GUI
 local aimbotRange = 1000  -- Max distance to aim at targets
 local smoothness = 0.1  -- Smoothing factor for the aiming
-
--- Premium Feature
-local isPremium = false  -- Premium status check (e.g., based on username or group membership)
-if LocalPlayer.MembershipType == Enum.MembershipType.Premium then
-    isPremium = true
-    print("Premium user detected")
-end
+local premiumFeaturesEnabled = true  -- Set this to 'true' to activate premium features
 
 -- Function to get the closest target
 local function getClosestTarget()
@@ -51,15 +46,14 @@ local function aimAtTarget(target)
         local direction = (targetPosition - Camera.CFrame.Position).unit
         local newCFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
 
-        -- Smooth aim towards the target
-        Camera.CFrame = Camera.CFrame:Lerp(newCFrame, smoothness)
+        -- Smooth aim towards the target with better responsiveness if premium
+        Camera.CFrame = Camera.CFrame:Lerp(newCFrame, premiumFeaturesEnabled and smoothness * 2 or smoothness)
     end
 end
 
 -- Create GUI
 local function createAimbotGUI()
     -- Properties:
-
     tekkit.Name = "tekkit"
     tekkit.Parent = game.CoreGui
     tekkit.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -130,6 +124,17 @@ local function createAimbotGUI()
     smooth.TextSize = 14.000
     smooth.TextWrapped = true
 
+    -- Premium Features Label
+    premiumLabel.Name = "premiumLabel"
+    premiumLabel.Parent = Frame
+    premiumLabel.BackgroundTransparency = 1
+    premiumLabel.Position = UDim2.new(0, 0, 0.9, 0)
+    premiumLabel.Size = UDim2.new(0, 293, 0, 30)
+    premiumLabel.Text = "Premium Features Enabled"
+    premiumLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+    premiumLabel.TextScaled = true
+    premiumLabel.Visible = premiumFeaturesEnabled
+
     -- Make the GUI draggable
     local dragging
     local dragInput
@@ -156,7 +161,7 @@ local function createAimbotGUI()
         end
     end)
 
- -- Toggle functionality
+    -- Toggle functionality
     aimbotT.MouseButton1Click:Connect(function()
         aimbotEnabled = not aimbotEnabled
         if aimbotEnabled then
@@ -170,7 +175,7 @@ local function createAimbotGUI()
         end
     end)
 
- -- Update smoothness from textbox
+    -- Update smoothness from textbox
     smoothText.FocusLost:Connect(function()
         local input = tonumber(smoothText.Text)
         if input then
@@ -181,14 +186,9 @@ local function createAimbotGUI()
         end
     end)
 
-    -- Premium Smoothness Adjustment
-    if isPremium then
-        smoothText.Text = "0.05"  -- More smoothness for premium users
-        smoothness = 0.05
-    end
-
     return Frame
 end
+
 -- Create GUI
 createAimbotGUI()
 
@@ -211,3 +211,22 @@ UserInputService.InputBegan:Connect(function(input)
         mouseButtonDown = true
         if aimbotEnabled then
             print("Left mouse button pressed, aimbot aiming.")
+        else
+            print("Aimbot is disabled, left mouse button has no effect.")
+        end
+    end
+end)
+
+-- Disable aimbot when left mouse button is released
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        mouseButtonDown = false
+        if aimbotEnabled then
+            print("Left mouse button released, aimbot still active.")
+        else
+            print("Aimbot is disabled, left mouse button has no effect.")
+        end
+    end
+end)
+
+print("Aimbot with Premium Features Initialized")
