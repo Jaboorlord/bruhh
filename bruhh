@@ -10,10 +10,18 @@ local Title = Instance.new("TextLabel")
 local smoothText = Instance.new("TextBox")
 local aimbotT = Instance.new("TextButton")
 local smooth = Instance.new("TextLabel")
+
 -- Settings
 local aimbotEnabled = false  -- Initially disabled, toggled by GUI
 local aimbotRange = 1000  -- Max distance to aim at targets
 local smoothness = 0.1  -- Smoothing factor for the aiming
+
+-- Premium Feature
+local isPremium = false  -- Premium status check (e.g., based on username or group membership)
+if LocalPlayer.MembershipType == Enum.MembershipType.Premium then
+    isPremium = true
+    print("Premium user detected")
+end
 
 -- Function to get the closest target
 local function getClosestTarget()
@@ -50,7 +58,7 @@ end
 
 -- Create GUI
 local function createAimbotGUI()
-    --Properties:
+    -- Properties:
 
     tekkit.Name = "tekkit"
     tekkit.Parent = game.CoreGui
@@ -173,6 +181,12 @@ local function createAimbotGUI()
         end
     end)
 
+    -- Premium Smoothness Adjustment
+    if isPremium then
+        smoothText.Text = "0.05"  -- More smoothness for premium users
+        smoothness = 0.05
+    end
+
     return Frame
 end
 -- Create GUI
@@ -197,71 +211,3 @@ UserInputService.InputBegan:Connect(function(input)
         mouseButtonDown = true
         if aimbotEnabled then
             print("Left mouse button pressed, aimbot aiming.")
-        else
-            print("Aimbot is disabled, left mouse button has no effect.")
-        end
-    end
-end)
-
--- Disable aimbot when left mouse button is released
-UserInputService.InputEnded:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 then
-        mouseButtonDown = false
-        if aimbotEnabled then
-            print("Left mouse button released, aimbot still active.")
-        else
-            print("Aimbot is disabled, left mouse button has no effect.")
-        end
-    end
-end)
-
-print("Aimbot with GUI Initialized")
-
-
-
-
--- Services
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-
--- Function to create a highlight for a model
-local function createHighlight(model)
-    local highlight = Instance.new("Highlight")
-    highlight.Adornee = model
-    highlight.Name = "PlayerHighlight"
-	highlight.FillColor = Color3.fromRGB(255, 0, 0)
-    highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
-    highlight.OutlineTransparency = 0.2
-    highlight.Parent = model
-end
-
--- Function to check and highlight models
-local function checkAndHighlightModel(model)
-    local player = Players:FindFirstChild(model.Name)
-    if player and player.Character then
-        if not model:FindFirstChild("PlayerHighlight") then
-            createHighlight(model)
-        end
-    end
-end
-
--- Connect to new model additions
-Workspace.ChildAdded:Connect(function(child)
-    if child:IsA("Model") then
-        checkAndHighlightModel(child)
-    end
-end)
-
--- Initial scan for existing models
-for _, child in pairs(Workspace:GetChildren()) do
-    if child:IsA("Model") then
-        checkAndHighlightModel(child)
-    end
-end
-
-UserInputService.InputEnded:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.RightShift then
-        tekkit.Enabled = not tekkit.Enabled
-		print("Gui toggled")
-    end
-end)
