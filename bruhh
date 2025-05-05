@@ -4,34 +4,24 @@ local Camera = game.Workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-local Workspace = game:GetService("Workspace")
-
--- Create GUI
 local tekkit = Instance.new("ScreenGui")
 local Frame = Instance.new("Frame")
 local Title = Instance.new("TextLabel")
 local smoothText = Instance.new("TextBox")
 local aimbotT = Instance.new("TextButton")
 local smooth = Instance.new("TextLabel")
-local missionToggle = Instance.new("TextButton")
-local performanceToggle = Instance.new("TextButton")
-local statsText = Instance.new("TextLabel")
 
 -- Settings
 local aimbotEnabled = false  -- Initially disabled, toggled by GUI
 local aimbotRange = 1000  -- Max distance to aim at targets
 local smoothness = 0.1  -- Smoothing factor for the aiming
-local autoMissionEnabled = false  -- Toggle for Auto Mission Farm
-local performanceModeEnabled = false  -- Toggle for Performance Mode
-local webhookUrl = "YOUR_DISCORD_WEBHOOK_URL"  -- Replace with your actual webhook URL
 
--- Tracking variables
-local playerStats = {
-    Gold = 0,
-    XP = 0,
-    Gems = 0
-}
+-- Premium Feature
+local isPremium = false  -- Premium status check (e.g., based on username or group membership)
+if LocalPlayer.MembershipType == Enum.MembershipType.Premium then
+    isPremium = true
+    print("Premium user detected")
+end
 
 -- Function to get the closest target
 local function getClosestTarget()
@@ -54,17 +44,22 @@ end
 
 -- Aimbot Function
 local function aimAtTarget(target)
+    -- Continuously check if HumanoidRootPart is available
     local humanoidRootPart = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if target and target.Character and target.Character:FindFirstChild("HumanoidRootPart") and humanoidRootPart then
         local targetPosition = target.Character.HumanoidRootPart.Position
         local direction = (targetPosition - Camera.CFrame.Position).unit
         local newCFrame = CFrame.new(Camera.CFrame.Position, Camera.CFrame.Position + direction)
+
+        -- Smooth aim towards the target
         Camera.CFrame = Camera.CFrame:Lerp(newCFrame, smoothness)
     end
 end
 
 -- Create GUI
 local function createAimbotGUI()
+    -- Properties:
+
     tekkit.Name = "tekkit"
     tekkit.Parent = game.CoreGui
     tekkit.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
@@ -75,7 +70,7 @@ local function createAimbotGUI()
     Frame.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Frame.BorderSizePixel = 0
     Frame.Position = UDim2.new(0.701550364, 0, 0.151329249, 0)
-    Frame.Size = UDim2.new(0, 293, 0, 398)
+    Frame.Size = UDim2.new(0, 293, 0, 298)
 
     Title.Name = "Title"
     Title.Parent = Frame
@@ -135,111 +130,84 @@ local function createAimbotGUI()
     smooth.TextSize = 14.000
     smooth.TextWrapped = true
 
-    -- Add mission farm toggle
-    missionToggle.Name = "missionToggle"
-    missionToggle.Parent = Frame
-    missionToggle.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-    missionToggle.Position = UDim2.new(0.199, 0, 0.451, 0)
-    missionToggle.Size = UDim2.new(0, 105, 0, 35)
-    missionToggle.Text = "Auto Mission"
-    missionToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    missionToggle.TextScaled = true
-    missionToggle.MouseButton1Click:Connect(function()
-        autoMissionEnabled = not autoMissionEnabled
-        if autoMissionEnabled then
-            missionToggle.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
-            missionToggle.Text = "Auto Mission ON"
-        else
-            missionToggle.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
-            missionToggle.Text = "Auto Mission OFF"
+    -- Make the GUI draggable
+    local dragging
+    local dragInput
+    local dragStart
+    local startPos
+
+    Frame.InputBegan:Connect(function(input)
+         if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Frame.Position
+            input.Changed:Connect(function()
+                if input.UserInputState == Enum.UserInputState.End then
+                    dragging = false
+                end
+            end)
         end
     end)
 
-    -- Add performance mode toggle
-    performanceToggle.Name = "performanceToggle"
-    performanceToggle.Parent = Frame
-    performanceToggle.BackgroundColor3 = Color3.fromRGB(0, 170, 170)
-    performanceToggle.Position = UDim2.new(0.199, 0, 0.5, 0)
-    performanceToggle.Size = UDim2.new(0, 105, 0, 35)
-    performanceToggle.Text = "Performance Mode"
-    performanceToggle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    performanceToggle.TextScaled = true
-    performanceToggle.MouseButton1Click:Connect(function()
-        performanceModeEnabled = not performanceModeEnabled
-        if performanceModeEnabled then
-            performanceToggle.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
-            performanceToggle.Text = "Performance Mode ON"
-        else
-            performanceToggle.BackgroundColor3 = Color3.fromRGB(0, 170, 170)
-            performanceToggle.Text = "Performance Mode OFF"
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            Frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
         end
     end)
 
-    -- Add stats display
-    statsText.Name = "statsText"
-    statsText.Parent = Frame
-    statsText.BackgroundTransparency = 1
-    statsText.Position = UDim2.new(0, 10, 0.75, 0)
-    statsText.Size = UDim2.new(0, 275, 0, 50)
-    statsText.Font = Enum.Font.SourceSans
-    statsText.TextColor3 = Color3.fromRGB(255, 255, 255)
-    statsText.Text = "Gold: " .. playerStats.Gold .. "\nXP: " .. playerStats.XP .. "\nGems: " .. playerStats.Gems
-    statsText.TextScaled = true
+ -- Toggle functionality
+    aimbotT.MouseButton1Click:Connect(function()
+        aimbotEnabled = not aimbotEnabled
+        if aimbotEnabled then
+            aimbotT.BackgroundColor3 = Color3.fromRGB(80, 255, 80)
+            aimbotT.Text = "Aimbot ON"
+            print("Aimbot Enabled")
+        else
+            aimbotT.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+            aimbotT.Text = "Toggle Aimbot"
+            print("Aimbot Disabled")
+        end
+    end)
+
+ -- Update smoothness from textbox
+    smoothText.FocusLost:Connect(function()
+        local input = tonumber(smoothText.Text)
+        if input then
+            smoothness = input
+            print("Smoothness set to " .. tostring(smoothness))
+        else
+            smoothText.Text = tostring(smoothness)  -- Revert to last valid value
+        end
+    end)
+
+    -- Premium Smoothness Adjustment
+    if isPremium then
+        smoothText.Text = "0.05"  -- More smoothness for premium users
+        smoothness = 0.05
+    end
 
     return Frame
 end
-
 -- Create GUI
 createAimbotGUI()
 
--- Function to send rewards via Discord Webhook
-local function sendWebhookNotification(message)
-    local data = {
-        content = message
-    }
-    HttpService:PostAsync(webhookUrl, HttpService:JSONEncode(data), Enum.HttpContentType.ApplicationJson)
-end
-
--- Function to track and display stats
-local function updateStats()
-    -- Replace this with actual stat tracking
-    playerStats.Gold = math.random(0, 10000)  -- Example random value
-    playerStats.XP = math.random(0, 1000)    -- Example random value
-    playerStats.Gems = math.random(0, 100)   -- Example random value
-
-    statsText.Text = "Gold: " .. playerStats.Gold .. "\nXP: " .. playerStats.XP .. "\nGems: " .. playerStats.Gems
-end
-
--- Auto Mission Farm (Placeholder function)
-local function autoMissionFarm()
-    if autoMissionEnabled then
-        -- Add mission completion logic here
-        print("Automatically completing mission...")
-    end
-end
-
--- Performance Mode Optimizations (e.g., disable certain functions in performance mode)
-local function optimizePerformance()
-    if performanceModeEnabled then
-        -- Disable certain functions to reduce resource usage
-        print("Performance Mode Enabled: Optimizing functions...")
-    else
-        -- Re-enable normal functions
-        print("Performance Mode Disabled: Restoring functions...")
-    end
-end
+-- Variable to track left mouse button state
+local mouseButtonDown = false
 
 -- Aimbot Loop
 RunService.RenderStepped:Connect(function()
-    if aimbotEnabled then
+    if mouseButtonDown and aimbotEnabled then
         local target = getClosestTarget()
         if target then
             aimAtTarget(target)
         end
     end
-    updateStats()
-    autoMissionFarm()
-    optimizePerformance()
 end)
 
--- Toggle aimbot with left mouse button when GUI
+-- Toggle aimbot with left mouse button when GUI is enabled
+UserInputService.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        mouseButtonDown = true
+        if aimbotEnabled then
+            print("Left mouse button pressed, aimbot aiming.")
